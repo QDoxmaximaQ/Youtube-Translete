@@ -14,15 +14,10 @@ script.onload = () => {
 // ---------------------------------------------------
 // Sayfadan gelen ham altyazı verisini background'a ilet
 // ---------------------------------------------------
-window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
-    if (!event.data || event.data.type !== "YT_SUBTITLE_RAW") return;
-
 let subtitleObserver = null;
 window.ytTranslatedSubtitles = [];
 window.ytHasTranslation = false;
 
-// Sayfadaki hook'tan gelen ham altyazı verisini al
 window.addEventListener("message", (event) => {
     if (event.source !== window) return;
     if (!event.data || event.data.type !== "YT_SUBTITLE_RAW") return;
@@ -144,14 +139,7 @@ function updatePlayerStyles() {
     const customDisplay = currentSettings.playerActive ? "flex" : "none";
 
     styleEl.textContent = `
-        /* Eski YouTube altyazılarını zorla gizle */
-        .ytp-caption-window-container, 
-        .caption-window, 
-        #movie_player .ytp-caption-segment { 
-            display: ${nativeDisplay}; 
-            ${currentSettings.playerActive ? "opacity: 0 !important; visibility: hidden !important;" : ""}
-        }
-
+        .ytp-caption-window-container { display: ${nativeDisplay}; }
         .yt-ai-subtitle-container {
             position: absolute;
             bottom: 8%;
