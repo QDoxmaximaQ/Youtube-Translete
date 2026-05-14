@@ -18,7 +18,26 @@ window.addEventListener("message", (event) => {
     if (event.source !== window) return;
     if (!event.data || event.data.type !== "YT_SUBTITLE_RAW") return;
 
+let subtitleObserver = null;
+window.ytTranslatedSubtitles = [];
+window.ytHasTranslation = false;
+
+// Sayfadaki hook'tan gelen ham altyazı verisini al
+window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    if (!event.data || event.data.type !== "YT_SUBTITLE_RAW") return;
+
     console.log("[YT-Sub] Ham altyazı verisi alındı, background'a iletiliyor...");
+
+    // Hızlıca orijinal altyazıları custom player için ayarla (çeviri gelene kadar veya çeviri kapalıysa)
+    try {
+        const parsed = JSON.parse(event.data.rawText);
+        if (parsed.events) {
+            window.ytHasTranslation = false;
+            window.ytTranslatedSubtitles = parsed.events; // Orijinali ata
+            startSubtitleObserver(); // Player'ı hemen çalıştır
+        }
+    } catch(e) {}
 
     chrome.runtime.sendMessage(
         {
@@ -35,16 +54,12 @@ window.addEventListener("message", (event) => {
                 console.log("[YT-Sub] İşlem tamamlandı:", response.data);
             } else if (response?.error) {
                 console.error("[YT-Sub] İşlem hatası:", response.error);
+            } else if (response?.skipped) {
+                console.log("[YT-Sub] Çeviri kapalı, sadece Custom Player orijinal altyazılarla çalışıyor.");
             }
         }
     );
 });
-
-// ---------------------------------------------------
-// Background'dan gelen sonuçları dinle
-// ---------------------------------------------------
-let subtitleObserver = null;
-window.ytTranslatedSubtitles = [];
 
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "TRANSLATION_RESULT") {
@@ -53,6 +68,7 @@ chrome.runtime.onMessage.addListener((message) => {
         try {
             const parsed = JSON.parse(message.translatedJson);
             window.ytTranslatedSubtitles = parsed.events || [];
+            window.ytHasTranslation = true;
             startSubtitleObserver();
         } catch (e) {
             console.error("[YT-Sub] Çeviri JSON parse hatası:", e);
