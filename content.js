@@ -113,7 +113,20 @@ function applyBetterTiming(events) {
         const currentEnd = current.tStartMs + current.dDurationMs;
         const nextStart = next.tStartMs;
         
-        // Eğer mevcut altyazı, bir sonrakinin başlangıcına taşıyorsa veya çok yakınsa
+        // Eğer 1. ve 2. altyazının başlangıç süreleri çok yakınsa (< 500ms)
+        // Bu büyük ihtimalle aynı anda veya çok hızlı peş peşe konuşan iki kişidir.
+        // Bu durumda süreyi kesme (üst üste binsinler) ve ayırt etmek için başlarına "-" ekle.
+        if (Math.abs(nextStart - current.tStartMs) < 500) {
+            if (current.segs && current.segs.length > 0 && !current.segs[0].utf8.trim().startsWith("-")) {
+                current.segs[0].utf8 = "- " + current.segs[0].utf8.trimStart();
+            }
+            if (next.segs && next.segs.length > 0 && !next.segs[0].utf8.trim().startsWith("-")) {
+                next.segs[0].utf8 = "- " + next.segs[0].utf8.trimStart();
+            }
+            continue; // Kesme işlemi yapmadan sonrakine geç
+        }
+        
+        // Eğer normal bir şekilde taşıyorsa veya çok yakınsa
         if (currentEnd >= nextStart) {
             // Mevcut altyazıyı bir sonrakinden 100ms önce bitir
             // Eğer aralık çok darsa, en az 100ms süre ver (eksiye düşmemek için)
