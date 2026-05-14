@@ -144,7 +144,14 @@ function updatePlayerStyles() {
     const customDisplay = currentSettings.playerActive ? "flex" : "none";
 
     styleEl.textContent = `
-        .ytp-caption-window-container { display: ${nativeDisplay}; }
+        /* Eski YouTube altyazılarını zorla gizle */
+        .ytp-caption-window-container, 
+        .caption-window, 
+        #movie_player .ytp-caption-segment { 
+            display: ${nativeDisplay}; 
+            ${currentSettings.playerActive ? "opacity: 0 !important; visibility: hidden !important;" : ""}
+        }
+
         .yt-ai-subtitle-container {
             position: absolute;
             bottom: 8%;
