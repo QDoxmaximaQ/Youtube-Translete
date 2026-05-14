@@ -68,6 +68,146 @@ chrome.runtime.onMessage.addListener((message) => {
 // YouTube Altyazılarını Ekranda Değiştirme (Custom Overlay)
 // ---------------------------------------------------
 let renderFrameId = null;
+let currentSettings = {
+    playerActive: true,
+    playerFontFamily: '"YouTube Noto", Roboto, "Arial Unicode Ms", Arial, Helvetica, Verdana, PT Sans Caption, sans-serif',
+    playerFontSize: 24,
+    playerTextColor: "#ffffff",
+    playerBgColor: "#080808",
+    playerBgOpacity: 75,
+    playerPosX: null,
+    playerPosY: null
+};
+
+// Başlangıçta ayarları al
+chrome.storage.local.get(null, (data) => {
+    if (data.playerActive !== undefined) currentSettings.playerActive = data.playerActive;
+    if (data.playerFontFamily) currentSettings.playerFontFamily = data.playerFontFamily;
+    if (data.playerFontSize) currentSettings.playerFontSize = data.playerFontSize;
+    if (data.playerTextColor) currentSettings.playerTextColor = data.playerTextColor;
+    if (data.playerBgColor) currentSettings.playerBgColor = data.playerBgColor;
+    if (data.playerBgOpacity !== undefined) currentSettings.playerBgOpacity = data.playerBgOpacity;
+    if (data.playerPosX !== undefined) currentSettings.playerPosX = data.playerPosX;
+    if (data.playerPosY !== undefined) currentSettings.playerPosY = data.playerPosY;
+});
+
+// Ayar değişikliklerini anlık dinle
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "UPDATE_PLAYER_SETTINGS") {
+        currentSettings = { ...currentSettings, ...message.settings };
+        updatePlayerStyles();
+    }
+    if (message.type === "RESET_PLAYER_POSITION") {
+        currentSettings.playerPosX = null;
+        currentSettings.playerPosY = null;
+        const customContainer = document.getElementById("yt-ai-subtitle-container");
+        if (customContainer) {
+            customContainer.style.transform = `translate(0px, 0px)`;
+        }
+    }
+});
+
+function hexToRgba(hex, opacity) {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+}
+
+function updatePlayerStyles() {
+    let styleEl = document.getElementById("yt-ai-subtitle-style");
+    if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = "yt-ai-subtitle-style";
+        document.head.appendChild(styleEl);
+    }
+
+    // Eğer player aktifse orijinali gizle, değilse göster
+    const nativeDisplay = currentSettings.playerActive ? "none !important" : "block";
+    const customDisplay = currentSettings.playerActive ? "flex" : "none";
+
+    styleEl.textContent = `
+        .ytp-caption-window-container { display: ${nativeDisplay}; }
+        .yt-ai-subtitle-container {
+            position: absolute;
+            bottom: 8%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 9999;
+            display: ${customDisplay};
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.1s ease-in-out;
+            cursor: grab;
+            user-select: none;
+        }
+        .yt-ai-subtitle-container:active {
+            cursor: grabbing;
+        }
+        .yt-ai-subtitle-line {
+            background: ${hexToRgba(currentSettings.playerBgColor, currentSettings.playerBgOpacity)};
+            color: ${currentSettings.playerTextColor};
+            font-family: ${currentSettings.playerFontFamily};
+            font-size: ${currentSettings.playerFontSize}px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            line-height: normal;
+            text-shadow: 0px 0px 3px rgba(0,0,0,0.8);
+            white-space: pre-wrap;
+            display: inline-block;
+            pointer-events: none; /* Metin seçimini engeller, sürüklemeyi kolaylaştırır */
+        }
+    `;
+
+    const customContainer = document.getElementById("yt-ai-subtitle-container");
+    if (customContainer && currentSettings.playerPosX !== null && currentSettings.playerPosY !== null) {
+        customContainer.style.transform = `translate(${currentSettings.playerPosX}px, ${currentSettings.playerPosY}px)`;
+    }
+}
+
+function makeDraggable(element) {
+    let isDragging = false;
+    let startX, startY, initialX = 0, initialY = 0;
+
+    element.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX - initialX;
+        startY = e.clientY - initialY;
+        element.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        initialX = e.clientX - startX;
+        initialY = e.clientY - startY;
+        
+        element.style.transform = `translate(${initialX}px, ${initialY}px)`;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            element.style.cursor = 'grab';
+            
+            // Pozisyonu kaydet
+            currentSettings.playerPosX = initialX;
+            currentSettings.playerPosY = initialY;
+            chrome.storage.local.set({ playerPosX: initialX, playerPosY: initialY });
+        }
+    });
+
+    // İlk pozisyonu yükle
+    if (currentSettings.playerPosX !== null && currentSettings.playerPosY !== null) {
+        initialX = currentSettings.playerPosX;
+        initialY = currentSettings.playerPosY;
+        element.style.transform = `translate(${initialX}px, ${initialY}px)`;
+    }
+}
 
 function startSubtitleObserver() {
     if (renderFrameId) {
@@ -82,77 +222,38 @@ function startSubtitleObserver() {
         return;
     }
 
-    // 1. Orijinal altyazıları tamamen gizle
-    let styleEl = document.getElementById("yt-ai-subtitle-style");
-    if (!styleEl) {
-        styleEl = document.createElement("style");
-        styleEl.id = "yt-ai-subtitle-style";
-        styleEl.textContent = `
-            .ytp-caption-window-container { display: none !important; }
-            .yt-ai-subtitle-container {
-                position: absolute;
-                bottom: 8%;
-                width: 100%;
-                text-align: center;
-                pointer-events: none;
-                z-index: 9999;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-                transition: opacity 0.1s ease-in-out;
-            }
-            .yt-ai-subtitle-line {
-                background: rgba(8, 8, 8, 0.75);
-                color: #ffffff;
-                font-family: "YouTube Noto", Roboto, "Arial Unicode Ms", Arial, Helvetica, Verdana, PT Sans Caption, sans-serif;
-                font-size: clamp(16px, 2.5vmin, 32px);
-                padding: 4px 8px;
-                border-radius: 2px;
-                line-height: normal;
-                text-shadow: 0px 0px 2px rgba(0,0,0,0.5);
-                white-space: pre-wrap;
-                display: inline-block;
-            }
-        `;
-        document.head.appendChild(styleEl);
-    }
+    updatePlayerStyles();
 
-    // 2. Kendi altyazı alanımızı oluştur
     let customContainer = document.getElementById("yt-ai-subtitle-container");
     if (!customContainer) {
         customContainer = document.createElement("div");
         customContainer.id = "yt-ai-subtitle-container";
         customContainer.className = "yt-ai-subtitle-container";
         moviePlayer.appendChild(customContainer);
+        makeDraggable(customContainer);
     }
 
-    // 3. Render Döngüsü (Her karede kontrol et)
     function renderSubtitles() {
-        if (!video || !window.ytTranslatedSubtitles || window.ytTranslatedSubtitles.length === 0) {
-            customContainer.style.opacity = "0";
+        if (!video || !window.ytTranslatedSubtitles || window.ytTranslatedSubtitles.length === 0 || !currentSettings.playerActive) {
+            if (customContainer) customContainer.style.opacity = "0";
             renderFrameId = requestAnimationFrame(renderSubtitles);
             return;
         }
 
         const currentTimeMs = video.currentTime * 1000;
 
-        // O anki zamana denk gelen BÜTÜN altyazıları bul (çakışan ASR altyazılarını desteklemek için)
         const activeEvents = window.ytTranslatedSubtitles.filter(e => 
             currentTimeMs >= e.tStartMs && currentTimeMs <= (e.tStartMs + e.dDurationMs)
         );
 
         if (activeEvents.length > 0) {
-            // Çakışan altyazıların hepsini alt alta birleştir
             const newText = activeEvents.map(ev => {
                 return ev.segs ? ev.segs.map(s => s.utf8).join(" ") : "";
             }).filter(text => text.trim() !== "").join("\n");
             
-            // Performans: Eğer metin aynıysa DOM'u yorma
             if (customContainer.dataset.currentText !== newText) {
                 customContainer.innerHTML = "";
                 
-                // Birden fazla satır varsa (ör: \n ile ayrılmış)
                 const lines = newText.split("\n");
                 lines.forEach(line => {
                     if (!line.trim()) return;
@@ -166,7 +267,6 @@ function startSubtitleObserver() {
             }
             customContainer.style.opacity = "1";
         } else {
-            // Çeviri yoksa gizle
             if (customContainer.style.opacity !== "0") {
                 customContainer.style.opacity = "0";
                 customContainer.dataset.currentText = "";

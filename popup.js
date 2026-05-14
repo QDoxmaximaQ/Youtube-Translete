@@ -6,6 +6,7 @@ import { initApiKey } from './Popup/components/ApiKey.js';
 import { initCustomPrompts } from './Popup/components/Prompts.js';
 import { initEngineConfig } from './Popup/components/EngineConfig.js';
 import { initStatusBar } from './Popup/components/StatusBar.js';
+import { initPlayerConfig } from './Popup/components/PlayerConfig.js';
 
 storage.get([
     "isActive", 
@@ -21,7 +22,13 @@ storage.get([
     "deeplChunk",
     "deeplSource",
     "deeplTarget",
-    "retryEnabled"
+    "retryEnabled",
+    "playerActive",
+    "playerFontFamily",
+    "playerFontSize",
+    "playerTextColor",
+    "playerBgColor",
+    "playerBgOpacity"
 ], (data) => {
     initToggle(data.isActive === true);
     initModelSelect(data.selectedModel);
@@ -29,6 +36,7 @@ storage.get([
     initApiKey(data.apiKey, data.groqApiKey, data.deeplApiKey);
     initCustomPrompts(data.geminiPrompt, data.groqPrompt);
     initEngineConfig(data.geminiChunk, data.groqChunk, data.deeplChunk, data.deeplSource, data.deeplTarget, data.retryEnabled);
+    initPlayerConfig(data);
     initStatusBar();
 
     // Kaydet Butonu
