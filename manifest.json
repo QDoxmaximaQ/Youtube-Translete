@@ -1,0 +1,48 @@
+{
+    "manifest_version": 3,
+    "name": "YT Subtitle AI",
+    "version": "1.0",
+    "icons": {
+        "48": "icon.png",
+        "128": "icon.png"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": "icon.png"
+    },
+    "permissions": [
+        "storage"
+    ],
+    "host_permissions": [
+        "https://www.youtube.com/*",
+        "https://generativelanguage.googleapis.com/*",
+        "https://api.groq.com/*",
+        "https://api.deepl.com/*",
+        "https://api-free.deepl.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.youtube.com/watch*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_start"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "ytAltyazicekme/capture.js"
+            ],
+            "matches": [
+                "https://www.youtube.com/*"
+            ]
+        }
+    ]
+}
