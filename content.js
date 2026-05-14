@@ -137,13 +137,16 @@ function startSubtitleObserver() {
 
         const currentTimeMs = video.currentTime * 1000;
 
-        // O anki zamana denk gelen altyazıyı bul
-        const activeEvent = window.ytTranslatedSubtitles.find(e => 
+        // O anki zamana denk gelen BÜTÜN altyazıları bul (çakışan ASR altyazılarını desteklemek için)
+        const activeEvents = window.ytTranslatedSubtitles.filter(e => 
             currentTimeMs >= e.tStartMs && currentTimeMs <= (e.tStartMs + e.dDurationMs)
         );
 
-        if (activeEvent && activeEvent.segs && activeEvent.segs.length > 0) {
-            const newText = activeEvent.segs.map(s => s.utf8).join(" ");
+        if (activeEvents.length > 0) {
+            // Çakışan altyazıların hepsini alt alta birleştir
+            const newText = activeEvents.map(ev => {
+                return ev.segs ? ev.segs.map(s => s.utf8).join(" ") : "";
+            }).filter(text => text.trim() !== "").join("\n");
             
             // Performans: Eğer metin aynıysa DOM'u yorma
             if (customContainer.dataset.currentText !== newText) {
