@@ -192,6 +192,23 @@
                     <input type="range" id="playerBgOpacity" min="0" max="100" value="75" style="width:100%;">
                 </div>
                 <div class="input-group">
+                    <label>Satır Arası Mesafe (px)</label>
+                    <input type="range" id="playerLineGap" min="0" max="30" value="4" style="width:100%;">
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="input-group" style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="display:flex; justify-content:space-between;">
+                        <span>Daha İyi Zaman</span>
+                        <div class="toggle-switch" style="transform: scale(0.7); transform-origin: right center; margin:0;">
+                            <input type="checkbox" id="playerBetterTime">
+                            <label for="playerBetterTime" class="toggle-label"></label>
+                        </div>
+                    </label>
+                    <span style="font-size:9px; color:rgba(255,255,255,0.4);">Çakışan altyazıları otomatik böler.</span>
+                </div>
+                <div class="input-group">
                     <label style="visibility:hidden;">Konum Sıfırla</label>
                     <button id="playerResetPosBtn" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:4px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s;">KONUMU SIFIRLA</button>
                 </div>

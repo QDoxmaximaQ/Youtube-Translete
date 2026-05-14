@@ -30,6 +30,7 @@ window.addEventListener("message", (event) => {
         if (parsed.events) {
             window.ytHasTranslation = false;
             window.ytTranslatedSubtitles = parsed.events; // Orijinali ata
+            applyBetterTiming(parsed.events); // Hızlıca işle
             startSubtitleObserver(); // Player'ı hemen çalıştır
         }
     } catch(e) {}
@@ -64,6 +65,7 @@ chrome.runtime.onMessage.addListener((message) => {
             const parsed = JSON.parse(message.translatedJson);
             window.ytTranslatedSubtitles = parsed.events || [];
             window.ytHasTranslation = true;
+            applyBetterTiming(window.ytTranslatedSubtitles);
             startSubtitleObserver();
         } catch (e) {
             console.error("[YT-Sub] Çeviri JSON parse hatası:", e);
@@ -86,9 +88,40 @@ let currentSettings = {
     playerTextColor: "#ffffff",
     playerBgColor: "#080808",
     playerBgOpacity: 75,
+    playerLineGap: 4,
+    playerBetterTime: false,
     playerPosX: null,
     playerPosY: null
 };
+
+window.ytProcessedSubtitles = [];
+
+function applyBetterTiming(events) {
+    if (!currentSettings.playerBetterTime || !events || events.length === 0) {
+        window.ytProcessedSubtitles = events || [];
+        return;
+    }
+    
+    // Orijinal veriyi bozmamak için derin kopya
+    const newEvents = JSON.parse(JSON.stringify(events));
+    newEvents.sort((a, b) => a.tStartMs - b.tStartMs);
+    
+    for (let i = 0; i < newEvents.length - 1; i++) {
+        const current = newEvents[i];
+        const next = newEvents[i + 1];
+        
+        const currentEnd = current.tStartMs + current.dDurationMs;
+        const nextStart = next.tStartMs;
+        
+        // Eğer mevcut altyazı, bir sonrakinin başlangıcına taşıyorsa veya çok yakınsa
+        if (currentEnd >= nextStart) {
+            // Mevcut altyazıyı bir sonrakinden 100ms önce bitir
+            // Eğer aralık çok darsa, en az 100ms süre ver (eksiye düşmemek için)
+            current.dDurationMs = Math.max(100, (nextStart - 100) - current.tStartMs);
+        }
+    }
+    window.ytProcessedSubtitles = newEvents;
+}
 
 // Başlangıçta ayarları al
 chrome.storage.local.get(null, (data) => {
@@ -98,6 +131,8 @@ chrome.storage.local.get(null, (data) => {
     if (data.playerTextColor) currentSettings.playerTextColor = data.playerTextColor;
     if (data.playerBgColor) currentSettings.playerBgColor = data.playerBgColor;
     if (data.playerBgOpacity !== undefined) currentSettings.playerBgOpacity = data.playerBgOpacity;
+    if (data.playerLineGap !== undefined) currentSettings.playerLineGap = data.playerLineGap;
+    if (data.playerBetterTime !== undefined) currentSettings.playerBetterTime = data.playerBetterTime;
     if (data.playerPosX !== undefined) currentSettings.playerPosX = data.playerPosX;
     if (data.playerPosY !== undefined) currentSettings.playerPosY = data.playerPosY;
 });
@@ -107,6 +142,10 @@ chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "UPDATE_PLAYER_SETTINGS") {
         currentSettings = { ...currentSettings, ...message.settings };
         updatePlayerStyles();
+        // Zaman ayarı değişmişse listeyi tekrar hesapla
+        if (window.ytTranslatedSubtitles) {
+            applyBetterTiming(window.ytTranslatedSubtitles);
+        }
     }
     if (message.type === "RESET_PLAYER_POSITION") {
         currentSettings.playerPosX = null;
@@ -150,7 +189,7 @@ function updatePlayerStyles() {
             display: ${customDisplay};
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: ${currentSettings.playerLineGap}px;
             transition: opacity 0.1s ease-in-out;
             cursor: grab;
             user-select: none;
@@ -245,7 +284,7 @@ function startSubtitleObserver() {
     }
 
     function renderSubtitles() {
-        if (!video || !window.ytTranslatedSubtitles || window.ytTranslatedSubtitles.length === 0 || !currentSettings.playerActive) {
+        if (!video || !window.ytProcessedSubtitles || window.ytProcessedSubtitles.length === 0 || !currentSettings.playerActive) {
             if (customContainer) customContainer.style.opacity = "0";
             renderFrameId = requestAnimationFrame(renderSubtitles);
             return;
@@ -253,7 +292,7 @@ function startSubtitleObserver() {
 
         const currentTimeMs = video.currentTime * 1000;
 
-        const activeEvents = window.ytTranslatedSubtitles.filter(e => 
+        const activeEvents = window.ytProcessedSubtitles.filter(e => 
             currentTimeMs >= e.tStartMs && currentTimeMs <= (e.tStartMs + e.dDurationMs)
         );
 

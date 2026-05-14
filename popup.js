@@ -28,7 +28,9 @@ storage.get([
     "playerFontSize",
     "playerTextColor",
     "playerBgColor",
-    "playerBgOpacity"
+    "playerBgOpacity",
+    "playerLineGap",
+    "playerBetterTime"
 ], (data) => {
     initToggle(data.isActive === true);
     initModelSelect(data.selectedModel);
