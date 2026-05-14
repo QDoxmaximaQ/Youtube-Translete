@@ -74,7 +74,6 @@ function startSubtitleObserver() {
 
     const container = document.querySelector(".ytp-caption-window-container") || document.getElementById("movie_player");
     if (!container) {
-        // Container henüz yüklenmemişse biraz bekle ve tekrar dene
         setTimeout(startSubtitleObserver, 1000);
         return;
     }
@@ -89,35 +88,42 @@ function startSubtitleObserver() {
 
         const currentTimeMs = video.currentTime * 1000;
 
-        // Ekranda gösterilmesi gereken aktif çeviri bloğunu bul (zaman bazlı)
-        // YouTube'un render gecikmelerini tolere etmek için +/- 200ms esneklik payı
+        // Daha geniş bir zaman toleransı (+/- 1000ms)
         const activeEvent = window.ytTranslatedSubtitles.find(e => 
-            currentTimeMs >= (e.tStartMs - 200) && currentTimeMs <= (e.tStartMs + e.dDurationMs + 200)
+            currentTimeMs >= (e.tStartMs - 1000) && currentTimeMs <= (e.tStartMs + e.dDurationMs + 1000)
         );
 
         if (activeEvent && activeEvent.segs && activeEvent.segs.length > 0) {
             const newText = activeEvent.segs.map(s => s.utf8).join(" ");
             
-            // Eğer ilk segmentin yazısı zaten yeni metinse tekrar değiştirme (performans)
-            if (segments[0].textContent !== newText && segments[0].dataset.ytSubTranslated !== newText) {
-                // Orijinal görünümü (renk, arka plan vb.) bozmamak için metni ilk segmente koyuyoruz
+            let isAlreadyTranslated = segments[0].dataset.ytSubTranslated === newText;
+            
+            if (!isAlreadyTranslated) {
                 segments[0].textContent = newText;
-                segments[0].dataset.ytSubTranslated = newText; // İşaretle
+                segments[0].dataset.ytSubTranslated = newText;
                 
-                // Birden fazla satır/segment varsa diğerlerini boşalt (çakışmayı önle)
                 for (let i = 1; i < segments.length; i++) {
                     segments[i].textContent = "";
+                    segments[i].dataset.ytSubTranslated = "cleared";
                 }
             }
+        } else {
+            // Eğer aktif bir çeviri yoksa ama orijinal metin ekrandaysa (zaman kayması vs), 
+            // orijinalin anlık olarak (İngilizce vb) parlamasını engellemek için metni gizle!
+            segments.forEach(seg => {
+                if (seg.dataset.ytSubTranslated !== "cleared") {
+                    seg.textContent = "";
+                    seg.dataset.ytSubTranslated = "cleared";
+                }
+            });
         }
     });
 
-    // Sadece altyazı alanındaki değişiklikleri dinle
     subtitleObserver.observe(container, {
         childList: true,
         subtree: true,
         characterData: true
     });
     
-    console.log("[YT-Sub] Altyazı eşleyici başlatıldı.");
+    console.log("[YT-Sub] Altyazı eşleyici başlatıldı. (Flicker koruması aktif)");
 }
