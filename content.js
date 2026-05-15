@@ -186,6 +186,10 @@ function applyBetterTiming(events) {
         
         // Eğer normal bir şekilde taşıyorsa veya çok yakınsa
         if (currentEnd >= nextStart) {
+            // Eğer süre kısalığından dolayı 700ms bilinçli eklendiyse, kesmeyip üst üste binmesine izin ver
+            if (current._isExtended) {
+                continue;
+            }
             // Mevcut altyazıyı bir sonrakinden 100ms önce bitir
             // Eğer aralık çok darsa, en az 100ms süre ver (eksiye düşmemek için)
             current.dDurationMs = Math.max(100, (nextStart - 100) - current.tStartMs);
