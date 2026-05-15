@@ -120,12 +120,75 @@ export class YoutubeEngine {
         outputEvents.push({
           tStartMs: data.start,
           dDurationMs: finalDuration,
-          _isExtended: finalDuration !== data.duration, // Custom player'ın kesmemesi için işaretle
           segs: [{ utf8: translatedText }]
         });
       }
     });
 
+    // Çakışan (Üst üste binen) süreleri matematiksel olarak birleştirip YouTube'un anlayacağı tekil olaylara çevir
+    outputEvents = YoutubeEngine.resolveOverlaps(outputEvents);
+
     return { events: outputEvents };
+  }
+
+  /**
+   * Kesişen süreleri parçalayarak alt satır (\n) olarak aynı blokta birleştirir.
+   * Bu sayede YouTube Native Player üst üste binen altyazıları silmek yerine alt alta gösterir.
+   */
+  static resolveOverlaps(events) {
+    let timePoints = new Set();
+    events.forEach(e => {
+       timePoints.add(e.tStartMs);
+       timePoints.add(e.tStartMs + e.dDurationMs);
+    });
+    let sortedTimes = Array.from(timePoints).sort((a, b) => a - b);
+
+    let newEvents = [];
+    for (let i = 0; i < sortedTimes.length - 1; i++) {
+        let start = sortedTimes[i];
+        let end = sortedTimes[i + 1];
+        let duration = end - start;
+        if (duration <= 0) continue;
+
+        let activeTexts = [];
+        events.forEach(e => {
+            let eEnd = e.tStartMs + e.dDurationMs;
+            if (e.tStartMs <= start && eEnd >= end) {
+                let text = e.segs[0]?.utf8 || "";
+                if (text && !activeTexts.includes(text)) {
+                   activeTexts.push(text);
+                }
+            }
+        });
+
+        if (activeTexts.length > 0) {
+            newEvents.push({
+                tStartMs: start,
+                dDurationMs: duration,
+                segs: [{ utf8: activeTexts.join("\n") }]
+            });
+        }
+    }
+
+    // Peş peşe gelen ve içeriği aynı olan parçaları (optimizasyon) birleştir
+    let mergedEvents = [];
+    for (let event of newEvents) {
+        if (mergedEvents.length === 0) {
+            mergedEvents.push(event);
+            continue;
+        }
+        let last = mergedEvents[mergedEvents.length - 1];
+        let lastEnd = last.tStartMs + last.dDurationMs;
+        let text1 = last.segs[0].utf8;
+        let text2 = event.segs[0].utf8;
+
+        if (text1 === text2 && lastEnd === event.tStartMs) {
+            last.dDurationMs += event.dDurationMs;
+        } else {
+            mergedEvents.push(event);
+        }
+    }
+
+    return mergedEvents;
   }
 }
