@@ -17,14 +17,30 @@ logTerminal("[YT-Sub] Service worker aktif");
 // ---------------------------------------------------
 // Content script'ten gelen mesajları dinle
 // ---------------------------------------------------
+const activeTranslationTasks = {}; // tabId -> taskId (Çeviri iptal mekanizması için)
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "VIDEO_CHANGED") {
+        if (sender.tab?.id) {
+            logTerminal(`[YT-Sub] Sayfa/Video değişti, önceki çeviri iptal ediliyor. Sekme: ${sender.tab.id}`);
+            activeTranslationTasks[sender.tab.id] = null; // Aktif çeviriyi durdur
+        }
+        sendResponse({ success: true });
+        return false;
+    }
+
     if (message.type === "SUBTITLE_CAPTURED") {
         logTerminal(`[YT-Sub] Altyazı yakalandı. Sekme: ${sender.tab?.id}`);
         
+        const taskId = Date.now();
+        if (sender.tab?.id) {
+            activeTranslationTasks[sender.tab.id] = taskId;
+        }
+
         // Hemen yanıt dönerek portun kapanmasını önle
         sendResponse({ success: true, message: "Çeviri arka planda başlatıldı." });
         
-        handleSubtitle(message.rawText, sender.tab?.id).catch(err => {
+        handleSubtitle(message.rawText, sender.tab?.id, taskId).catch(err => {
             logTerminal(`[HATA] Çeviri hatası: ${err.message}`);
         });
 
@@ -36,7 +52,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ---------------------------------------------------
 // Ana iş akışı: Yakalama → Parse → Payload → Prompt/DeepL → API → Rebuild
 // ---------------------------------------------------
-async function handleSubtitle(rawText, tabId) {
+async function handleSubtitle(rawText, tabId, taskId) {
     // 1. Ayarları al
     const settings = await chrome.storage.local.get([
         "isActive",
@@ -113,6 +129,12 @@ async function handleSubtitle(rawText, tabId) {
 
     // 3. Her bir Chunk için API'yi çağır (Retry mekanizması ile)
     for (let i = 0; i < payloads.length; i++) {
+        // Eğer çeviri iptal edildiyse veya yeni video açıldıysa işlemi kes
+        if (tabId && activeTranslationTasks[tabId] !== taskId) {
+            logTerminal(`[YT-Sub] Çeviri işlemi iptal edildi (Yeni video açıldı).`);
+            break;
+        }
+
         const payload = payloads[i];
         
         let success = false;
@@ -199,6 +221,12 @@ async function handleSubtitle(rawText, tabId) {
             }).catch(() => {});
         }
     }
+    // Eğer döngü iptal edildiyse işlemi tamamen durdur
+    if (tabId && activeTranslationTasks[tabId] !== taskId) {
+        logTerminal(`[YT-Sub] İptal edilen işlem için sayfa güncellemesi yapılmıyor.`);
+        return { success: false, reason: "cancelled" };
+    }
+
     logTerminal(`[YT-Sub] Tüm parçalar başarıyla çevrildi.`);
 
     // 4. Yeniden oluştur (Rebuild)

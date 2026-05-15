@@ -57,6 +57,23 @@ window.addEventListener("message", (event) => {
     );
 });
 
+// ---------------------------------------------------
+// Sayfa değişimlerini (SPA) algıla ve altyazıları sıfırla
+// ---------------------------------------------------
+window.addEventListener("yt-navigate-start", () => {
+    console.log("[YT-Sub] Video değişiyor, eski altyazılar sıfırlanıyor...");
+    window.ytProcessedSubtitles = [];
+    window.ytTranslatedSubtitles = [];
+    window.ytHasTranslation = false;
+    
+    const container = document.getElementById("yt-ai-subtitle-container");
+    if (container) {
+        container.innerHTML = "";
+    }
+    
+    chrome.runtime.sendMessage({ type: "VIDEO_CHANGED" }).catch(() => {});
+});
+
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "TRANSLATION_RESULT") {
         console.log(`[YT-Sub] Çeviri geldi (${message.lang}, ${message.model})`);
