@@ -115,14 +115,8 @@ function applyBetterTiming(events) {
         
         // Eğer 1. ve 2. altyazının başlangıç süreleri çok yakınsa (< 500ms)
         // Bu büyük ihtimalle aynı anda veya çok hızlı peş peşe konuşan iki kişidir.
-        // Bu durumda süreyi kesme (üst üste binsinler) ve ayırt etmek için başlarına "-" ekle.
+        // Bu durumda süreyi kesme (üst üste binsinler). Tire vb. eklemiyoruz, orijinal bırakıyoruz.
         if (Math.abs(nextStart - current.tStartMs) < 500) {
-            if (current.segs && current.segs.length > 0 && !current.segs[0].utf8.trim().startsWith("-")) {
-                current.segs[0].utf8 = "- " + current.segs[0].utf8.trimStart();
-            }
-            if (next.segs && next.segs.length > 0 && !next.segs[0].utf8.trim().startsWith("-")) {
-                next.segs[0].utf8 = "- " + next.segs[0].utf8.trimStart();
-            }
             continue; // Kesme işlemi yapmadan sonrakine geç
         }
         
