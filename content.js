@@ -83,7 +83,40 @@ window.addEventListener("yt-navigate-start", () => {
     }
 });
 
+const pendingMessages = {
+    "tr": "[AI Çevirisi Bekleniyor... Lütfen Bekleyin]",
+    "en": "[AI Translation Pending... Please Wait]",
+    "ru": "[Ожидание перевода ИИ... Пожалуйста, подождите]",
+    "ja": "[AI翻訳保留中... お待ちください]",
+    "de": "[KI-Übersetzung ausstehend... Bitte warten]",
+    "fr": "[Traduction IA en attente... Veuillez patienter]",
+    "es": "[Traducción de IA pendiente... Por favor espere]"
+};
+
+function getPendingMessage(langCode) {
+    const shortCode = (langCode || "en").toLowerCase().split("-")[0];
+    return pendingMessages[shortCode] || pendingMessages["en"];
+}
+
 chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "TRANSLATION_STARTED") {
+        const msgText = getPendingMessage(message.lang);
+        const pendingJson = JSON.stringify({ 
+            events: [{ tStartMs: 0, dDurationMs: 60000, segs: [{ utf8: msgText }] }] 
+        });
+
+        if (!currentSettings.playerActive) {
+            sessionStorage.setItem('yt_ai_translation', pendingJson);
+            window.postMessage({ type: "YT_RELOAD_CAPTIONS" }, "*");
+        } else {
+            const parsed = JSON.parse(pendingJson);
+            window.ytTranslatedSubtitles = parsed.events || [];
+            window.ytHasTranslation = false;
+            applyBetterTiming(window.ytTranslatedSubtitles);
+            startSubtitleObserver();
+        }
+    }
+
     if (message.type === "TRANSLATION_RESULT") {
         console.log(`[YT-Sub] Çeviri geldi (${message.lang}, ${message.model})`);
         

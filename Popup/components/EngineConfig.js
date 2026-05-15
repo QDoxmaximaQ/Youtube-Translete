@@ -19,9 +19,9 @@ export function initEngineConfig(geminiChunk, groqChunk, deeplChunk, deeplSource
         clearTimeout(timeout);
         timeout = setTimeout(() => {
             storage.set({ 
-                geminiChunk: parseInt(geminiInput.value) || 400,
-                groqChunk: parseInt(groqInput.value) || 100,
-                deeplChunk: parseInt(deeplInput.value) || 150,
+                geminiChunk: geminiInput.value,
+                groqChunk: groqInput.value,
+                deeplChunk: deeplInput.value,
                 deeplSource: deeplSourceSelect.value,
                 deeplTarget: deeplTargetSelect.value
             });

@@ -3,6 +3,8 @@ export const models = [
     { name: "Gemini 2.5", id: "gemini-2.5-flash" },
     { name: "Gemini 2.5 Lite", id: "gemini-2.5-flash-lite" },
     { name: "Gemini 3.1 (ücretli)", id: "gemini-3.1-pro-preview" },
+    { name: "Gemini 3.1 flash", id: "gemini-3.1-flash-lite" },
+    { name: "Gemini 3.1 flash preview", id: "gemini-3.1-flash-lite-preview" },
     { name: "DeepL Free", id: "DeepL-Free" },
     { name: "DeepL Pro (ücretli)", id: "DeepL-Pro" },
     { name: "Llama 4", id: "meta-llama/llama-4-scout-17b-16e-instruct" },

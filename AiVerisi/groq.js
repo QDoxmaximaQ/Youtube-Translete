@@ -16,41 +16,68 @@ export async function translateWithGroq({ apiKey, model, prompt }) {
         throw new Error("Groq/OpenRouter API anahtarı ayarlanmamış. Popup'tan API Key girin.");
     }
 
-    // Model isminde '/' varsa OpenRouter, yoksa Groq kullanıyoruz.
-    const isOpenRouter = model.includes("/");
+    const cleanApiKey = apiKey.trim();
+
+    // API anahtarının önekine göre doğru sunucuyu seç:
+    //   gsk_  → Groq
+    //   sk-or- → OpenRouter
+    //   Diğer → model isminde '/' varsa OpenRouter, yoksa Groq
+    let isOpenRouter;
+    if (cleanApiKey.startsWith("gsk_")) {
+        isOpenRouter = false;
+    } else if (cleanApiKey.startsWith("sk-or-")) {
+        isOpenRouter = true;
+    } else {
+        isOpenRouter = model.includes("/");
+    }
+
     const endpoint = isOpenRouter 
         ? "https://openrouter.ai/api/v1/chat/completions" 
         : "https://api.groq.com/openai/v1/chat/completions";
 
+    // Groq/Llama modeller system+user ayrımına ihtiyaç duyar
+    // Promptu "### DATA START ###" üzerinden böl
+    const dataSplit = prompt.split("### DATA START ###");
+    const systemContent = dataSplit[0].trim();
+    const dataContent = dataSplit.length > 1 ? dataSplit[1].trim() : prompt;
+
     const body = {
         model: model,
-        messages: [{
-            role: "user",
-            content: prompt
-        }],
+        messages: [
+            {
+                role: "system",
+                content: systemContent
+            },
+            {
+                role: "user",
+                content: "### DATA START ###\n" + dataContent
+            }
+        ],
         temperature: 0.3,
         top_p: 0.8
     };
 
-    const cleanApiKey = apiKey.trim();
     console.log(`[YT-Sub] API Key kontrol: ${cleanApiKey.length} karakter`);
+    console.log(`[YT-Sub] API Key tipi: ${cleanApiKey.startsWith("gsk_") ? "GROQ" : (cleanApiKey.startsWith("sk-or-") ? "OPENROUTER" : "BİLİNMİYOR")}`);
 
-    const headers = { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${cleanApiKey}`
+    const fetchOptions = {
+        method: "POST",
+        credentials: "omit",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + cleanApiKey
+        },
+        body: JSON.stringify(body)
     };
 
-    // Chrome Eklenti ortamında özel HTTP başlıkları (HTTP-Referer vb.) 
-    // bazen Authorization başlığının silinmesine veya CORS hatalarına yol açar.
-    // Bu yüzden sadece gerekli olanları gönderiyoruz.
+    if (isOpenRouter) {
+        fetchOptions.headers["HTTP-Referer"] = "https://github.com/yt-subtitle-ai";
+        fetchOptions.headers["X-Title"] = "YT Subtitle AI";
+    }
 
     console.log(`[YT-Sub] ${isOpenRouter ? 'OpenRouter' : 'Groq'} API çağrılıyor: ${model}`);
 
-    const response = await fetch(endpoint, {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify(body)
-    });
+    const response = await fetch(endpoint, fetchOptions);
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

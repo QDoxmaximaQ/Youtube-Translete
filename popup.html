@@ -109,16 +109,16 @@
             <div class="section-title text-gradient-cyan mt-4" style="margin-top: 20px;" data-i18n="CHUNK_SETTINGS">MOTOR KAPASİTE AYARLARI (CHUNK)</div>
             <div class="grid-3">
                 <div class="input-group">
-                    <label class="text-blue">Gemini Chunk</label>
-                    <input type="number" id="geminiChunk" placeholder="400" autocomplete="off" class="premium-input">
+                    <label data-i18n="GEMINI_PROMPT">Gemini (Satır/Parça)</label>
+                    <input type="text" id="geminiChunk" class="premium-input" placeholder="Örn: 400 veya full" />
                 </div>
                 <div class="input-group">
-                    <label class="text-orange">Groq Chunk</label>
-                    <input type="number" id="groqChunk" placeholder="100" autocomplete="off" class="premium-input">
+                    <label data-i18n="GROQ_PROMPT">Groq/Llama (Satır/Parça)</label>
+                    <input type="text" id="groqChunk" class="premium-input" placeholder="Örn: 100 veya full" />
                 </div>
-                <div class="input-group">
-                    <label class="text-cyan">DeepL Chunk</label>
-                    <input type="number" id="deeplChunk" placeholder="150" autocomplete="off" class="premium-input">
+                <div class="input-group" style="grid-column: 1 / -1;">
+                    <label>DeepL (Satır/Parça)</label>
+                    <input type="text" id="deeplChunk" class="premium-input" placeholder="Örn: 150 veya full" />
                 </div>
             </div>
 

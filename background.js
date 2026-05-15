@@ -107,7 +107,16 @@ async function handleSubtitle(rawText, tabId, taskId) {
         return { skipped: true, reason: "empty_subtitles" };
     }
 
-    const chunkSize = isDeepL ? (settings.deeplChunk || 150) : (isGemini ? (settings.geminiChunk || 400) : (settings.groqChunk || 100));
+    let cSetting = isDeepL ? settings.deeplChunk : (isGemini ? settings.geminiChunk : settings.groqChunk);
+    let chunkSize;
+    if (String(cSetting).toLowerCase().trim() === "full") {
+        chunkSize = 999999;
+    } else {
+        chunkSize = parseInt(cSetting);
+        if (isNaN(chunkSize) || chunkSize <= 0) {
+            chunkSize = isDeepL ? 150 : (isGemini ? 400 : 100);
+        }
+    }
 
     logTerminal(`[YT-Sub] ${blocks.length} blok bulundu. Chunk size: ${chunkSize}`);
     const { payloads, metadata } = YoutubeEngine.preparePayload(blocks, chunkSize);
@@ -119,6 +128,15 @@ async function handleSubtitle(rawText, tabId, taskId) {
     };
 
     let allTranslatedText = "";
+
+    // 2.5 Sayfaya çevirinin başladığını haber ver (bekleme mesajı için)
+    const targetLang = isDeepL ? (settings.deeplTarget || "tr") : (settings.translationMode || "tr");
+    if (tabId) {
+        chrome.tabs.sendMessage(tabId, {
+            type: "TRANSLATION_STARTED",
+            lang: targetLang
+        }).catch(() => {});
+    }
 
     // 3. Her bir Chunk için API'yi çağır (Retry mekanizması ile)
     for (let i = 0; i < payloads.length; i++) {

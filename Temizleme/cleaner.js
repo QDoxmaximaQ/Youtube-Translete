@@ -101,7 +101,7 @@ export class YoutubeEngine {
       mapping[match[1]] = match[2].trim();
     }
 
-    const outputEvents = [];
+    let outputEvents = [];
     const sortedKeys = Object.keys(metadata).sort((a, b) => Number(a) - Number(b));
 
     sortedKeys.forEach((key) => {
