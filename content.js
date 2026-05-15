@@ -114,10 +114,29 @@ function applyBetterTiming(events) {
         const nextStart = next.tStartMs;
         
         // Eğer 1. ve 2. altyazının başlangıç süreleri çok yakınsa (< 500ms)
-        // Bu büyük ihtimalle aynı anda veya çok hızlı peş peşe konuşan iki kişidir.
-        // Bu durumda süreyi kesme (üst üste binsinler). Tire vb. eklemiyoruz, orijinal bırakıyoruz.
+        // Bu iki farklı kişinin konuşması da olabilir, YouTube ASR'nin kelime düzeltmesi de olabilir.
         if (Math.abs(nextStart - current.tStartMs) < 500) {
-            continue; // Kesme işlemi yapmadan sonrakine geç
+            const currentText = current.segs ? current.segs.map(s => s.utf8 || "").join("").toLowerCase().replace(/[^\w\sğüşıöç]/gi, "").trim() : "";
+            const nextText = next.segs ? next.segs.map(s => s.utf8 || "").join("").toLowerCase().replace(/[^\w\sğüşıöç]/gi, "").trim() : "";
+            
+            // Eğer kelimelerin bir kısmı aynıysa (ASR güncellemesi), süreyi keseceğiz ki iki kere yazmasın.
+            // Biri diğerini kapsıyorsa veya çok benzerse:
+            if (currentText && nextText) {
+                const words1 = currentText.split(/\s+/).filter(w => w);
+                const words2 = nextText.split(/\s+/).filter(w => w);
+                let matchCount = 0;
+                words1.forEach(w => { if (words2.includes(w)) matchCount++; });
+                
+                const matchRatio = matchCount / Math.max(1, words1.length, words2.length);
+                
+                if (matchRatio < 0.5) {
+                    // Benzerlik düşükse (%50'den az), demek ki iki farklı kişi.
+                    continue; // Kesme işlemi yapma, üst üste binsin
+                }
+                // Benzerlik yüksekse, bu bir ASR tekrarıdır. continue yapmıyoruz, aşağıdaki kesme kodu çalışacak.
+            } else {
+                continue; // Metin yoksa da üst üste binsin
+            }
         }
         
         // Eğer normal bir şekilde taşıyorsa veya çok yakınsa
