@@ -20,14 +20,16 @@ logTerminal("[YT-Sub] Service worker aktif");
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "SUBTITLE_CAPTURED") {
         logTerminal(`[YT-Sub] Altyazı yakalandı. Sekme: ${sender.tab?.id}`);
-        handleSubtitle(message.rawText, sender.tab?.id)
-            .then(result => sendResponse({ success: true, data: result }))
-            .catch(err => {
-                logTerminal(`[HATA] Çeviri hatası: ${err.message}`);
-                sendResponse({ success: false, error: err.message });
-            });
+        
+        // Hemen yanıt dönerek portun kapanmasını önle
+        sendResponse({ success: true, message: "Çeviri arka planda başlatıldı." });
+        
+        handleSubtitle(message.rawText, sender.tab?.id).catch(err => {
+            logTerminal(`[HATA] Çeviri hatası: ${err.message}`);
+        });
 
-        return true;
+        // false dönüyoruz çünkü sendResponse'u senkron olarak hemen çağırdık
+        return false;
     }
 });
 
@@ -183,10 +185,20 @@ async function handleSubtitle(rawText, tabId) {
                 await new Promise(r => setTimeout(r, 2000));
             }
         }
-        
         allTranslatedText += "\n\n" + chunkTranslated;
+
+        // Her chunk çevrildiğinde ara sonuçları sayfaya gönder
+        const partialSubtitles = YoutubeEngine.rebuild(allTranslatedText, metadata);
+        if (tabId) {
+            chrome.tabs.sendMessage(tabId, {
+                type: "TRANSLATION_RESULT",
+                original: blocks,
+                translatedJson: JSON.stringify(partialSubtitles),
+                lang: engineSettings.translationMode,
+                model
+            }).catch(() => {});
+        }
     }
-    
     logTerminal(`[YT-Sub] Tüm parçalar başarıyla çevrildi.`);
 
     // 4. Yeniden oluştur (Rebuild)
