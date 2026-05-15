@@ -106,9 +106,22 @@ function applyBetterTiming(events) {
     const newEvents = JSON.parse(JSON.stringify(events));
     newEvents.sort((a, b) => a.tStartMs - b.tStartMs);
     
-    for (let i = 0; i < newEvents.length - 1; i++) {
-        const current = newEvents[i];
-        const next = newEvents[i + 1];
+    // Gölge (shadow) kopyaları ve tam tekrar eden ASR hatalarını filtrele
+    const filteredEvents = [];
+    let lastTextForFilter = "";
+    
+    for (const event of newEvents) {
+        const text = event.segs ? event.segs.map(s => s.utf8 || "").join("").replace(/\s+/g, ' ').trim() : "";
+        if (text && text === lastTextForFilter) {
+            continue; // Birebir aynıysa atla
+        }
+        filteredEvents.push(event);
+        if (text) lastTextForFilter = text;
+    }
+    
+    for (let i = 0; i < filteredEvents.length - 1; i++) {
+        const current = filteredEvents[i];
+        const next = filteredEvents[i + 1];
         
         const currentEnd = current.tStartMs + current.dDurationMs;
         const nextStart = next.tStartMs;
@@ -146,7 +159,7 @@ function applyBetterTiming(events) {
             current.dDurationMs = Math.max(100, (nextStart - 100) - current.tStartMs);
         }
     }
-    window.ytProcessedSubtitles = newEvents;
+    window.ytProcessedSubtitles = filteredEvents;
 }
 
 // Başlangıçta ayarları al
