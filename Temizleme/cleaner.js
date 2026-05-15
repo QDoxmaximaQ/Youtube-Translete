@@ -12,6 +12,7 @@ export class YoutubeEngine {
 
       const blocks = [];
       let index = 1;
+      let lastText = "";
 
       for (const event of data.events) {
         if (!event.segs) continue;
@@ -20,9 +21,15 @@ export class YoutubeEngine {
           .map(s => s.utf8 || "")
           .join("")
           .replace(/\n/g, ' ')
+          .replace(/\s+/g, ' ') // Birden fazla boşluğu tek boşluğa indir
           .trim();
 
         if (!text) continue;
+        
+        // Eğer bir önceki metinle birebir aynıysa, API maliyetini düşürmek ve çift yazmayı engellemek için atla (YouTube ASR tekrarı)
+        if (text === lastText) {
+            continue;
+        }
 
         blocks.push([
           index,
@@ -31,6 +38,7 @@ export class YoutubeEngine {
           text
         ]);
 
+        lastText = text;
         index++;
       }
       return blocks;
