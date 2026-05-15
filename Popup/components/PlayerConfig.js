@@ -12,7 +12,6 @@ export function initPlayerConfig(settings) {
     const bgColor = document.getElementById("playerBgColor");
     const bgOpacity = document.getElementById("playerBgOpacity");
     const lineGap = document.getElementById("playerLineGap");
-    const betterTime = document.getElementById("playerBetterTime");
     const resetBtn = document.getElementById("playerResetPosBtn");
 
     let isPlayerActive = settings.playerActive !== false; // varsayılan true
@@ -46,7 +45,6 @@ export function initPlayerConfig(settings) {
     if (settings.playerBgColor) bgColor.value = settings.playerBgColor;
     if (settings.playerBgOpacity !== undefined) bgOpacity.value = settings.playerBgOpacity;
     if (settings.playerLineGap !== undefined) lineGap.value = settings.playerLineGap;
-    if (settings.playerBetterTime !== undefined) betterTime.checked = settings.playerBetterTime;
 
     let timeout = null;
     const saveSettings = () => {
@@ -59,8 +57,7 @@ export function initPlayerConfig(settings) {
                 playerTextColor: textColor.value,
                 playerBgColor: bgColor.value,
                 playerBgOpacity: parseInt(bgOpacity.value),
-                playerLineGap: parseInt(lineGap.value),
-                playerBetterTime: betterTime.checked
+                playerLineGap: parseInt(lineGap.value)
             };
             storage.set(newSettings);
             
@@ -82,7 +79,6 @@ export function initPlayerConfig(settings) {
     bgColor.addEventListener("input", saveSettings);
     bgOpacity.addEventListener("input", saveSettings);
     lineGap.addEventListener("input", saveSettings);
-    betterTime.addEventListener("change", saveSettings);
 
     resetBtn.addEventListener("click", () => {
         storage.set({ playerPosX: null, playerPosY: null });

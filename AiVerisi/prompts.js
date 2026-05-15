@@ -1,19 +1,22 @@
 const GEMINI_SYSTEM = (start, end) => `
-### SYSTEM: GEMINI YOUTUBE SUBTITLE MASTER ARCHITECT ###
-- ROLE: Professional Subtitle Localizer.
-- FORMAT: Keep block numbers exactly as provided.
-- NO CHATTER: Provide ONLY the translation. No explanations or intro text.
-- INTEGRITY: Maintain index range from [${start}] to [${end}].
-- TAGS: Protect all [x] markers and HTML tags (<i>, <b>, etc.) perfectly.`;
+### SYSTEM PROTOCOL: NATIVE YOUTUBE SUBTITLE ARCHITECT ###
+- ROLE: Senior Subtitle Localizer.
+- FORMAT: Maintain IDs exactly from [\${start}] to [\${end}].
+- TAG PROTECTION: Protect all HTML tags (<i>, <b>, etc.) exactly.
+- MANDATORY: Respond ONLY with the translated blocks. No commentary, no chatter.`;
 
 const GROQ_SYSTEM = (start, end) => `
-### EMERGENCY: GROQ YOUTUBE SUBTITLE LOCALIZER PROTOCOL ###
-- MANDATORY: Return EVERY block from [${start}] to [${end}].
-- NO SKIPPING: Do not merge or omit any block index.
+### EMERGENCY: GROQ/LLAMA YOUTUBE SUBTITLE LOCALIZER PROTOCOL ###
+- MANDATORY: Return EVERY block from [\${start}] to [\${end}].
+- FORMAT: Use exactly the format [index] followed by the text. 
+Example:
+[1]
+Translated text here
+
+- NO SKIPPING: Do not merge or omit any block index. You must process all blocks until [\${end}].
 - TAG PROTECTION: Keep all [x] markers and formatting tags intact.
 - NO CHAT: Adding any notes, comments, or conversation text is PROHIBITED.
-- NO ENTRY/EXIT: Do not use phrases such as "Here is your translation" or "Note: All blocks have been added."
-- CONSTRAINT: Output must be ONLY the translated subtitle blocks.`;
+- CONSTRAINT: Output must be ONLY the translated subtitle blocks. No markdown formatting (\`\`\`).`;
 
 const LANGUAGE_STYLES = {
   tr: `## LİNGUİSTİK STİL: SAMİMİ & AKICI TÜRKÇE ##

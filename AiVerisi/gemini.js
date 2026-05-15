@@ -27,9 +27,7 @@ export async function translateWithGemini({ apiKey, model, prompt }) {
             parts: [{ text: prompt }]
         }],
         generationConfig: {
-            temperature: 0.3,
-            topP: 0.8,
-            maxOutputTokens: 8192,
+            temperature: 0.1
         }
     };
 

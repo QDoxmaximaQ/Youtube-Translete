@@ -6,10 +6,11 @@
 import { YoutubeEngine } from "./Temizleme/cleaner.js";
 import { translateWithGemini } from "./AiVerisi/gemini.js";
 import { translateWithDeepL } from "./AiVerisi/deepl.js";
+import { translateWithGroq } from "./AiVerisi/groq.js";
 
 function logTerminal(msg) {
     console.log(msg);
-    chrome.runtime.sendMessage({ type: "TERMINAL_LOG", message: msg }).catch(() => {});
+    chrome.runtime.sendMessage({ type: "TERMINAL_LOG", message: msg }).catch(() => { });
 }
 
 logTerminal("[YT-Sub] Service worker aktif");
@@ -31,7 +32,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === "SUBTITLE_CAPTURED") {
         logTerminal(`[YT-Sub] Altyazı yakalandı. Sekme: ${sender.tab?.id}`);
-        
+
         const taskId = Date.now();
         if (sender.tab?.id) {
             activeTranslationTasks[sender.tab.id] = taskId;
@@ -39,7 +40,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Hemen yanıt dönerek portun kapanmasını önle
         sendResponse({ success: true, message: "Çeviri arka planda başlatıldı." });
-        
+
         handleSubtitle(message.rawText, sender.tab?.id, taskId).catch(err => {
             logTerminal(`[HATA] Çeviri hatası: ${err.message}`);
         });
@@ -58,6 +59,7 @@ async function handleSubtitle(rawText, tabId, taskId) {
         "isActive",
         "selectedModel",
         "apiKey",
+        "groqApiKey",
         "deeplApiKey",
         "translationMode",
         "geminiPrompt",
@@ -66,8 +68,7 @@ async function handleSubtitle(rawText, tabId, taskId) {
         "groqChunk",
         "deeplChunk",
         "deeplSource",
-        "deeplTarget",
-        "retryEnabled"
+        "deeplTarget"
     ]);
 
     // Aktif değilse çık
@@ -79,26 +80,19 @@ async function handleSubtitle(rawText, tabId, taskId) {
     const model = settings.selectedModel || "gemini-2.5-flash";
     const isGemini = model.startsWith("gemini");
     const isDeepL = model.startsWith("DeepL");
-
-    if (!isGemini && !isDeepL) {
-        logTerminal(`[UYARI] "${model}" henüz desteklenmiyor.`);
-        if (tabId) {
-            chrome.tabs.sendMessage(tabId, {
-                type: "TRANSLATION_ERROR",
-                error: `"${model}" modeli henüz desteklenmiyor.`
-            });
-        }
-        return { skipped: true, reason: "unsupported_model" };
-    }
-
-    const activeApiKey = isDeepL ? settings.deeplApiKey : settings.apiKey;
+    const isGroq = !isGemini && !isDeepL; // Geri kalan modeller Groq veya OpenRouter üzerinden işlenir
+    
+    // Eğer Groq/OpenRouter kullanılıyorsa, önce groqApiKey'e bakar, boşsa genel apiKey'e (Gemini kutusu) düşer.
+    const activeApiKey = isDeepL 
+        ? settings.deeplApiKey 
+        : (isGroq ? (settings.groqApiKey || settings.apiKey) : settings.apiKey);
 
     if (!activeApiKey) {
-        logTerminal(`[UYARI] ${isDeepL ? 'DeepL' : 'Gemini'} API Key ayarlanmamış.`);
+        logTerminal(`[UYARI] ${isDeepL ? 'DeepL' : (isGroq ? 'Groq/OpenRouter' : 'Gemini')} API Key ayarlanmamış.`);
         if (tabId) {
             chrome.tabs.sendMessage(tabId, {
                 type: "TRANSLATION_ERROR",
-                error: `${isDeepL ? 'DeepL' : 'Gemini'} API Key ayarlanmamış. Uzantı popup'ından API Key girin.`
+                error: `${isDeepL ? 'DeepL' : (isGroq ? 'Groq/OpenRouter' : 'Gemini')} API Key ayarlanmamış. Uzantı popup'ından API Key girin.`
             });
         }
         return { skipped: true, reason: "no_api_key" };
@@ -114,7 +108,6 @@ async function handleSubtitle(rawText, tabId, taskId) {
     }
 
     const chunkSize = isDeepL ? (settings.deeplChunk || 150) : (isGemini ? (settings.geminiChunk || 400) : (settings.groqChunk || 100));
-    const retryEnabled = settings.retryEnabled !== false; // Default true
 
     logTerminal(`[YT-Sub] ${blocks.length} blok bulundu. Chunk size: ${chunkSize}`);
     const { payloads, metadata } = YoutubeEngine.preparePayload(blocks, chunkSize);
@@ -124,7 +117,7 @@ async function handleSubtitle(rawText, tabId, taskId) {
         geminiPrompt: settings.geminiPrompt || "",
         groqPrompt: settings.groqPrompt || ""
     };
-    
+
     let allTranslatedText = "";
 
     // 3. Her bir Chunk için API'yi çağır (Retry mekanizması ile)
@@ -136,22 +129,22 @@ async function handleSubtitle(rawText, tabId, taskId) {
         }
 
         const payload = payloads[i];
-        
+
         let success = false;
         let attempts = 0;
         let chunkTranslated = "";
-        const maxAttempts = retryEnabled ? 3 : 1;
+        const maxAttempts = 5;
 
         while (!success && attempts < maxAttempts) {
             attempts++;
             try {
                 logTerminal(`[YT-Sub] Çevriliyor: Parça ${i + 1}/${payloads.length} (Deneme ${attempts})`);
-                
+
                 if (isDeepL) {
                     // DeepL doğrudan metin arrayi alır
                     const textsToTranslate = payload.map(p => `[${p[0]}]\n${p[1]}`); // Send with ID to prevent shift
-                    
-                    console.groupCollapsed(`%c[DeepL GİDEN SAF VERİ (İLK 10) - Parça ${i+1}]`, "color: #10b981; font-weight: bold;");
+
+                    console.groupCollapsed(`%c[DeepL GİDEN SAF VERİ (İLK 10) - Parça ${i + 1}]`, "color: #10b981; font-weight: bold;");
                     textsToTranslate.slice(0, 10).forEach(t => console.log(`%c${t}`, "color: #10b981;"));
                     if (textsToTranslate.length > 10) console.log("%c... (Tüm veri DeepL'e iletildi)", "color: #10b981;");
                     console.groupEnd();
@@ -165,16 +158,17 @@ async function handleSubtitle(rawText, tabId, taskId) {
                     });
                     chunkTranslated = translatedArray.join("\n\n");
 
-                    console.groupCollapsed(`%c[DeepL GELEN SAF YANIT (İLK 10) - Parça ${i+1}]`, "color: #3b82f6; font-weight: bold;");
+                    console.groupCollapsed(`%c[DeepL GELEN SAF YANIT (İLK 10) - Parça ${i + 1}]`, "color: #3b82f6; font-weight: bold;");
                     translatedArray.slice(0, 10).forEach(t => console.log(`%c${t}`, "color: #3b82f6;"));
                     if (translatedArray.length > 10) console.log("%c... (Tüm yanıt işleniyor)", "color: #3b82f6;");
                     console.groupEnd();
 
                 } else {
                     // Gemini/Groq Prompt alır
-                    const prompt = YoutubeEngine.getPrompt(payload, "GEMINI", engineSettings);
-                    
-                    console.groupCollapsed(`%c[AI GİDEN TAM PROMPT VE SAF VERİ - Parça ${i+1}]`, "color: #10b981; font-weight: bold;");
+                    const engineType = isGroq ? "GROQ" : "GEMINI";
+                    const prompt = YoutubeEngine.getPrompt(payload, engineType, engineSettings);
+
+                    console.groupCollapsed(`%c[AI GİDEN TAM PROMPT VE SAF VERİ - Parça ${i + 1}]`, "color: #10b981; font-weight: bold;");
                     const promptParts = prompt.split("### DATA START ###");
                     console.log(`%c${promptParts[0] ? promptParts[0].trim() : prompt}`, "color: #10b981;");
                     if (promptParts.length > 1) {
@@ -184,9 +178,13 @@ async function handleSubtitle(rawText, tabId, taskId) {
                     }
                     console.groupEnd();
 
-                    chunkTranslated = await translateWithGemini({ apiKey: activeApiKey, model, prompt });
+                    if (isGroq) {
+                        chunkTranslated = await translateWithGroq({ apiKey: activeApiKey, model, prompt });
+                    } else {
+                        chunkTranslated = await translateWithGemini({ apiKey: activeApiKey, model, prompt });
+                    }
 
-                    console.groupCollapsed(`%c[AI GELEN SAF YANIT (İLK 10) - Parça ${i+1}]`, "color: #3b82f6; font-weight: bold;");
+                    console.groupCollapsed(`%c[AI GELEN SAF YANIT (İLK 10) - Parça ${i + 1}]`, "color: #3b82f6; font-weight: bold;");
                     const blockMatches = chunkTranslated.match(/\[\d+\][\s\S]*?(?=\[\d+\]|$)/g);
                     if (blockMatches) {
                         blockMatches.slice(0, 10).forEach(block => console.log(`%c${block.trim()}`, "color: #3b82f6;"));
@@ -199,15 +197,40 @@ async function handleSubtitle(rawText, tabId, taskId) {
 
                 success = true;
             } catch (err) {
+                let waitTime = Math.min(2000 * Math.pow(2, attempts) + Math.random() * 1000, 15000);
+                
+                // Groq veya OpenRouter API'den gelen Rate Limit süresini yakala
+                const rateLimitMatch = err.message.match(/try again in ([\d\.]+)s/i);
+                let isRateLimit = false;
+
+                if (rateLimitMatch && rateLimitMatch[1]) {
+                    const exactWaitSec = parseFloat(rateLimitMatch[1]);
+                    waitTime = (exactWaitSec * 1000) + 1500; // Sunucunun istediği süre + 1.5 sn güven payı
+                    isRateLimit = true;
+                } else if (err.message.includes("429")) {
+                    waitTime = 10000; // "try again" süresi belirtilmemişse standart 10 saniye bekle
+                    isRateLimit = true;
+                }
+
                 if (attempts >= maxAttempts) {
                     logTerminal(`[HATA] Parça ${i + 1} çevrilemedi: ${err.message}`);
-                    throw err; 
+                    throw err;
                 }
-                logTerminal(`[UYARI] Çeviri hatası, tekrar deneniyor... (${attempts}/${maxAttempts})`);
-                await new Promise(r => setTimeout(r, 2000));
+                
+                if (isRateLimit) {
+                    logTerminal(`[UYARI] Rate Limit (429) engeli! Sunucunun izni için ${Math.round(waitTime/1000)} saniye bekleniyor...`);
+                } else {
+                    logTerminal(`[UYARI] Çeviri hatası (${err.message.split('\n')[0]}). ${Math.round(waitTime/1000)} saniye sonra tekrar deneniyor... (${attempts}/${maxAttempts})`);
+                }
+                await new Promise(r => setTimeout(r, waitTime));
             }
         }
         allTranslatedText += "\n\n" + chunkTranslated;
+
+        if (i < payloads.length - 1) {
+            logTerminal(`[YT-Sub] Bir sonraki parçaya geçmeden önce 2 saniye bekleniyor...`);
+            await new Promise(r => setTimeout(r, 2000));
+        }
 
         // Her chunk çevrildiğinde ara sonuçları sayfaya gönder
         const partialSubtitles = YoutubeEngine.rebuild(allTranslatedText, metadata);
@@ -218,7 +241,7 @@ async function handleSubtitle(rawText, tabId, taskId) {
                 translatedJson: JSON.stringify(partialSubtitles),
                 lang: engineSettings.translationMode,
                 model
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }
     // Eğer döngü iptal edildiyse işlemi tamamen durdur

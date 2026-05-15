@@ -9,17 +9,25 @@
 </head>
 <body>
     <header class="header">
-        <h1 class="app-title">SİSTEM AYARLARI</h1>
-        <div id="statusBar" class="status-bar" style="color: #00ffd5;">SİSTEM: HAZIR</div>
+        <h1 class="app-title" data-i18n="APP_TITLE">SİSTEM AYARLARI</h1>
+        <div class="header-controls">
+            <select id="menuLangSelect" class="lang-select">
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+                <option value="ru">Русский</option>
+                <option value="ja">日本語</option>
+            </select>
+        </div>
+        <div id="statusBar" class="status-bar" data-i18n="STATUS_READY">SİSTEM: HAZIR</div>
     </header>
 
     <div class="container">
         <!-- TOGGLE -->
-        <section class="section flex-between">
-            <div class="section-title no-margin text-cyan">UZANTI DURUMU</div>
+        <section class="section flex-between glass-panel">
+            <div class="section-title no-margin text-gradient-cyan" data-i18n="EXT_STATUS">UZANTI DURUMU</div>
             <div class="toggle-container">
-                <span id="statusText">Pasif</span>
-                <button id="toggleBtn" class="toggle-btn">
+                <span id="statusText" data-i18n="INACTIVE">Pasif</span>
+                <button id="toggleBtn" class="toggle-btn premium-toggle">
                     <span class="toggle-track">
                         <span class="toggle-thumb" id="toggleThumb"></span>
                     </span>
@@ -29,43 +37,44 @@
         </section>
 
         <!-- API KEYS -->
-        <section class="section">
-            <div class="section-title text-orange">API KEY KAYIT SİSTEMİ</div>
+        <section class="section glass-panel">
+            <div class="section-title text-gradient-orange" data-i18n="API_SYSTEM">API KEY KAYIT SİSTEMİ</div>
             <div class="grid-2">
                 <div class="input-group">
                     <label>GEMINI API KEY</label>
-                    <input type="password" id="geminiKeyInput" placeholder="Gemini Key..." autocomplete="off">
+                    <input type="password" id="geminiKeyInput" placeholder="Gemini Key..." autocomplete="off" class="premium-input">
                 </div>
                 <div class="input-group">
                     <label>GROQ API KEY</label>
-                    <input type="password" id="groqKeyInput" placeholder="Groq Key..." autocomplete="off">
+                    <input type="password" id="groqKeyInput" placeholder="Groq Key..." autocomplete="off" class="premium-input">
                 </div>
                 <div class="input-group">
                     <label class="text-blue">DEEPL API KEY</label>
-                    <input type="password" id="deeplKeyInput" placeholder="DeepL Key..." autocomplete="off">
+                    <input type="password" id="deeplKeyInput" placeholder="DeepL Key..." autocomplete="off" class="premium-input">
                 </div>
             </div>
         </section>
 
         <!-- AI KONTROL MERKEZİ -->
-        <section class="section">
-            <div class="section-title text-cyan">AI KONTROL MERKEZİ</div>
+        <section class="section glass-panel">
+            <div class="section-title text-gradient-cyan" data-i18n="AI_CONTROL">AI KONTROL MERKEZİ</div>
             <div class="grid-2">
                 <div class="input-group">
-                    <label>Çeviri Motoru (Model)</label>
-                    <select id="modelSelect"></select>
+                    <label data-i18n="TRANSLATOR_MODEL">Çeviri Motoru (Model)</label>
+                    <select id="modelSelect" class="premium-select"></select>
                     <p id="modelId" class="hint"></p>
+                </div>
                 <div class="input-group" id="aiTranslationModeContainer">
-                    <label>Çeviri Dili (Hedef/Stil)</label>
-                    <select id="modeSelect"></select>
+                    <label data-i18n="TRANSLATOR_LANG">Çeviri Dili (Hedef/Stil)</label>
+                    <select id="modeSelect" class="premium-select"></select>
                 </div>
             </div>
 
-            <!-- DEEPL TRANSLATION MODE (Hidden by default) -->
+            <!-- DEEPL TRANSLATION MODE -->
             <div class="grid-2" id="deeplLanguageContainer" style="display:none; margin-top: 16px;">
                 <div class="input-group">
-                    <label>Kaynak Dil (Source)</label>
-                    <select id="deeplSourceSelect">
+                    <label data-i18n="SOURCE_LANG">Kaynak Dil (Source)</label>
+                    <select id="deeplSourceSelect" class="premium-select">
                         <option value="auto">Otomatik (Auto)</option>
                         <option value="en">İngilizce (EN)</option>
                         <option value="de">Almanca (DE)</option>
@@ -78,8 +87,8 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>Hedef Dil (Target)</label>
-                    <select id="deeplTargetSelect">
+                    <label data-i18n="TARGET_LANG">Hedef Dil (Target)</label>
+                    <select id="deeplTargetSelect" class="premium-select">
                         <option value="tr">Türkçe (TR)</option>
                         <option value="en">İngilizce (EN)</option>
                         <option value="de">Almanca (DE)</option>
@@ -97,59 +106,46 @@
             </div>
 
             <!-- CHUNK AYARLARI -->
-            <div class="section-title text-cyan mt-4" style="margin-top: 20px;">MOTOR KAPASİTE AYARLARI (CHUNK)</div>
-            <div class="grid-2">
+            <div class="section-title text-gradient-cyan mt-4" style="margin-top: 20px;" data-i18n="CHUNK_SETTINGS">MOTOR KAPASİTE AYARLARI (CHUNK)</div>
+            <div class="grid-3">
                 <div class="input-group">
                     <label class="text-blue">Gemini Chunk</label>
-                    <input type="number" id="geminiChunk" placeholder="400" autocomplete="off">
+                    <input type="number" id="geminiChunk" placeholder="400" autocomplete="off" class="premium-input">
                 </div>
                 <div class="input-group">
                     <label class="text-orange">Groq Chunk</label>
-                    <input type="number" id="groqChunk" placeholder="100" autocomplete="off">
+                    <input type="number" id="groqChunk" placeholder="100" autocomplete="off" class="premium-input">
                 </div>
                 <div class="input-group">
                     <label class="text-cyan">DeepL Chunk</label>
-                    <input type="number" id="deeplChunk" placeholder="150" autocomplete="off">
+                    <input type="number" id="deeplChunk" placeholder="150" autocomplete="off" class="premium-input">
                 </div>
             </div>
 
-            <!-- RETRY AYARI -->
-            <div class="section-title text-cyan mt-4" style="margin-top: 20px;">ONARIM MOTORU (RETRY)</div>
-            <div class="toggle-container" style="justify-content: space-between; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <span id="retryText" style="font-weight: 900; font-size: 11px; text-transform: uppercase; color: #00ffd5;">AKTİF — Otomatik Onarım Açık</span>
-                    <span style="font-size: 9px; color: rgba(255,255,255,0.4);">Başarısız çeviriler otomatik olarak yeniden gönderilir.</span>
-                </div>
-                <button id="retryBtn" class="toggle-btn">
-                    <span class="toggle-track" id="retryTrack">
-                        <span class="toggle-thumb" id="retryThumb"></span>
-                    </span>
-                </button>
-            </div>
-        </section>
+            </section>
 
         <!-- ÖZEL PROMPTLAR -->
-        <section class="section">
-            <div class="section-title text-cyan">ÖZEL PROMPTLAR</div>
+        <section class="section glass-panel">
+            <div class="section-title text-gradient-cyan" data-i18n="CUSTOM_PROMPTS">ÖZEL PROMPTLAR</div>
             <div class="grid-2">
                 <div class="input-group">
-                    <label class="text-blue">Gemini Özel Prompt</label>
-                    <textarea id="geminiPrompt" placeholder="Gemini için özel talimatlar..."></textarea>
+                    <label class="text-blue" data-i18n="GEMINI_PROMPT">Gemini Özel Prompt</label>
+                    <textarea id="geminiPrompt" class="premium-input" placeholder="..."></textarea>
                 </div>
                 <div class="input-group">
-                    <label class="text-orange">Groq Özel Prompt</label>
-                    <textarea id="groqPrompt" placeholder="Groq/Llama için özel talimatlar..."></textarea>
+                    <label class="text-orange" data-i18n="GROQ_PROMPT">Groq Özel Prompt</label>
+                    <textarea id="groqPrompt" class="premium-input" placeholder="..."></textarea>
                 </div>
             </div>
         </section>
 
         <!-- ALTYAZI OYNATICI (PLAYER) AYARLARI -->
-        <section class="section">
-            <div class="section-title text-cyan" style="display:flex; justify-content:space-between; align-items:center;">
-                ALTYAZI OYNATICI AYARLARI
-                <div class="toggle-container" style="padding:0; background:none; border:none; width:auto;">
-                    <span id="playerToggleText" style="margin-right:10px; font-size:10px; font-weight:bold; color:#00ffd5;">AÇIK</span>
-                    <button id="playerToggleBtn" class="toggle-btn">
+        <section class="section glass-panel">
+            <div class="section-title text-gradient-cyan flex-between-center">
+                <span data-i18n="PLAYER_SETTINGS">ALTYAZI OYNATICI AYARLARI</span>
+                <div class="toggle-container" style="padding:0; background:none; border:none; width:auto; box-shadow:none;">
+                    <span id="playerToggleText" style="margin-right:10px; font-size:10px; font-weight:bold; color:#00ffd5;" data-i18n="ON">AÇIK</span>
+                    <button id="playerToggleBtn" class="toggle-btn premium-toggle">
                         <span class="toggle-track active" id="playerToggleTrack">
                             <span class="toggle-thumb active" id="playerToggleThumb"></span>
                         </span>
@@ -159,8 +155,8 @@
             
             <div class="grid-2">
                 <div class="input-group">
-                    <label>Yazı Fontu</label>
-                    <select id="playerFontFamily">
+                    <label data-i18n="FONT_FAMILY">Yazı Fontu</label>
+                    <select id="playerFontFamily" class="premium-select">
                         <option value='"YouTube Noto", Roboto, "Arial Unicode Ms", Arial, Helvetica, Verdana, PT Sans Caption, sans-serif'>Varsayılan (Roboto)</option>
                         <option value='Arial, sans-serif'>Arial</option>
                         <option value='"Courier New", Courier, monospace'>Courier New</option>
@@ -170,54 +166,48 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>Yazı Boyutu</label>
-                    <input type="range" id="playerFontSize" min="10" max="60" value="24" style="width:100%;">
+                    <label data-i18n="FONT_SIZE">Yazı Boyutu</label>
+                    <input type="range" id="playerFontSize" min="10" max="60" value="24" class="premium-range">
                 </div>
             </div>
 
             <div class="grid-2">
                 <div class="input-group">
-                    <label>Yazı Rengi</label>
-                    <input type="color" id="playerTextColor" value="#ffffff" style="width:100%; height:30px; border:none; border-radius:4px; padding:0; cursor:pointer;">
+                    <label data-i18n="TEXT_COLOR">Yazı Rengi</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="playerTextColor" value="#ffffff">
+                    </div>
                 </div>
                 <div class="input-group">
-                    <label>Arka Plan Rengi</label>
-                    <input type="color" id="playerBgColor" value="#080808" style="width:100%; height:30px; border:none; border-radius:4px; padding:0; cursor:pointer;">
+                    <label data-i18n="BG_COLOR">Arka Plan Rengi</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="playerBgColor" value="#080808">
+                    </div>
                 </div>
             </div>
 
             <div class="grid-2">
                 <div class="input-group">
-                    <label>Arka Plan Saydamlığı (%)</label>
-                    <input type="range" id="playerBgOpacity" min="0" max="100" value="75" style="width:100%;">
+                    <label data-i18n="BG_OPACITY">Arka Plan Saydamlığı (%)</label>
+                    <input type="range" id="playerBgOpacity" min="0" max="100" value="75" class="premium-range">
                 </div>
                 <div class="input-group">
-                    <label>Satır Arası Mesafe (px)</label>
-                    <input type="range" id="playerLineGap" min="0" max="30" value="4" style="width:100%;">
+                    <label data-i18n="LINE_GAP">Satır Arası Mesafe (px)</label>
+                    <input type="range" id="playerLineGap" min="0" max="30" value="4" class="premium-range">
                 </div>
             </div>
 
             <div class="grid-2">
-                <div class="input-group" style="display:flex; flex-direction:column; gap:4px;">
-                    <label style="display:flex; justify-content:space-between;">
-                        <span>Daha İyi Zaman</span>
-                        <div class="toggle-switch" style="transform: scale(0.7); transform-origin: right center; margin:0;">
-                            <input type="checkbox" id="playerBetterTime">
-                            <label for="playerBetterTime" class="toggle-label"></label>
-                        </div>
-                    </label>
-                    <span style="font-size:9px; color:rgba(255,255,255,0.4);">Çakışan altyazıları otomatik böler.</span>
-                </div>
                 <div class="input-group">
-                    <label style="visibility:hidden;">Konum Sıfırla</label>
-                    <button id="playerResetPosBtn" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:4px; padding:8px; cursor:pointer; font-weight:bold; font-size:12px; transition:0.2s;">KONUMU SIFIRLA</button>
+                    <button id="playerResetPosBtn" class="premium-btn reset-btn" data-i18n="RESET_POS">KONUMU SIFIRLA</button>
                 </div>
+                <div class="input-group"></div>
             </div>
-            <p style="font-size:10px; color:rgba(255,255,255,0.5); text-align:center; margin-top:10px;">İpucu: Altyazıyı ekranda farenizle tutup istediğiniz yere sürükleyebilirsiniz.</p>
+            <p class="drag-hint" data-i18n="DRAG_HINT">İpucu: Altyazıyı ekranda farenizle tutup istediğiniz yere sürükleyebilirsiniz.</p>
         </section>
 
         <!-- KAYDET BUTONU -->
-        <button id="saveBtn" class="save-btn">AYARLARI KAYDET</button>
+        <button id="saveBtn" class="save-btn premium-save-btn" data-i18n="SAVE_BTN">AYARLARI KAYDET</button>
     </div>
 
     <script type="module" src="popup.js"></script>

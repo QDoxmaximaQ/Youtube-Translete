@@ -20,13 +20,14 @@ export class YoutubeEngine {
         const text = event.segs
           .map(s => s.utf8 || "")
           .join("")
-          .replace(/\n/g, ' ')
-          .replace(/\s+/g, ' ') // Birden fazla boşluğu tek boşluğa indir
+          .replace(/[\r\n]+/g, ' ') // Alt satırları boşluğa çevir
+          .replace(/[\u200B-\u200D\uFEFF]/g, '') // Görünmez karakterleri sil
+          .replace(/\s+/g, ' ') // Birden fazla boşluğu tek boşluğa düşür
           .trim();
 
         if (!text) continue;
-        
-        // Eğer bir önceki metinle birebir aynıysa, API maliyetini düşürmek ve çift yazmayı engellemek için atla (YouTube ASR tekrarı)
+
+        // Birebir aynıysa atla
         if (text === lastText) {
             continue;
         }
@@ -41,6 +42,7 @@ export class YoutubeEngine {
         lastText = text;
         index++;
       }
+
       return blocks;
     } catch (e) {
       console.error("[YT-Sub] JSON parse hatası:", e);
@@ -105,11 +107,20 @@ export class YoutubeEngine {
     sortedKeys.forEach((key) => {
       const data = metadata[key];
       if (data) {
-        const translatedText = mapping[key] || data.orig || "";
+        let translatedText = mapping[key] || data.orig || "";
         
+        // AI'dan gelebilecek çift boşlukları veya alt satırları temizle
+        translatedText = translatedText.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        let finalDuration = data.duration;
+        if (finalDuration < 1000) {
+            finalDuration += 700; // Okunabilirlik için çok kısa altyazılara ek süre ver
+        }
+
         outputEvents.push({
           tStartMs: data.start,
-          dDurationMs: data.duration,
+          dDurationMs: finalDuration,
+          _isExtended: finalDuration !== data.duration, // Custom player'ın kesmemesi için işaretle
           segs: [{ utf8: translatedText }]
         });
       }

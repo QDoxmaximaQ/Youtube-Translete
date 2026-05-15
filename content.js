@@ -35,26 +35,30 @@ window.addEventListener("message", (event) => {
         }
     } catch(e) {}
 
-    chrome.runtime.sendMessage(
-        {
-            type: "SUBTITLE_CAPTURED",
-            rawText: event.data.rawText,
-            sourceUrl: event.data.sourceUrl
-        },
-        (response) => {
-            if (chrome.runtime.lastError) {
-                console.error("[YT-Sub] Background iletişim hatası:", chrome.runtime.lastError.message);
-                return;
+    try {
+        chrome.runtime.sendMessage(
+            {
+                type: "SUBTITLE_CAPTURED",
+                rawText: event.data.rawText,
+                sourceUrl: event.data.sourceUrl
+            },
+            (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error("[YT-Sub] Background iletişim hatası:", chrome.runtime.lastError.message);
+                    return;
+                }
+                if (response?.success) {
+                    console.log("[YT-Sub] İşlem tamamlandı:", response.data);
+                } else if (response?.error) {
+                    console.error("[YT-Sub] İşlem hatası:", response.error);
+                } else if (response?.skipped) {
+                    console.log("[YT-Sub] Çeviri kapalı, sadece Custom Player orijinal altyazılarla çalışıyor.");
+                }
             }
-            if (response?.success) {
-                console.log("[YT-Sub] İşlem tamamlandı:", response.data);
-            } else if (response?.error) {
-                console.error("[YT-Sub] İşlem hatası:", response.error);
-            } else if (response?.skipped) {
-                console.log("[YT-Sub] Çeviri kapalı, sadece Custom Player orijinal altyazılarla çalışıyor.");
-            }
-        }
-    );
+        );
+    } catch (err) {
+        console.error("[YT-Sub] Eklenti bağlantısı koptu (Muhtemelen eklentiyi yenilediniz). Lütfen sayfayı yenileyin.", err.message);
+    }
 });
 
 // ---------------------------------------------------
@@ -65,13 +69,18 @@ window.addEventListener("yt-navigate-start", () => {
     window.ytProcessedSubtitles = [];
     window.ytTranslatedSubtitles = [];
     window.ytHasTranslation = false;
+    sessionStorage.removeItem('yt_ai_translation');
     
     const container = document.getElementById("yt-ai-subtitle-container");
     if (container) {
         container.innerHTML = "";
     }
     
-    chrome.runtime.sendMessage({ type: "VIDEO_CHANGED" }).catch(() => {});
+    try {
+        chrome.runtime.sendMessage({ type: "VIDEO_CHANGED" }).catch(() => {});
+    } catch (err) {
+        console.warn("[YT-Sub] Eklenti bağlantısı koptu. Lütfen sayfayı yenileyin.");
+    }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -82,6 +91,13 @@ chrome.runtime.onMessage.addListener((message) => {
             const parsed = JSON.parse(message.translatedJson);
             window.ytTranslatedSubtitles = parsed.events || [];
             window.ytHasTranslation = true;
+            
+            // Native mode aktifse: Session Storage'a yazıp Youtube'u reload et
+            if (!currentSettings.playerActive) {
+                sessionStorage.setItem('yt_ai_translation', message.translatedJson);
+                window.postMessage({ type: "YT_RELOAD_CAPTIONS" }, "*");
+            }
+
             applyBetterTiming(window.ytTranslatedSubtitles);
             startSubtitleObserver();
         } catch (e) {
@@ -106,7 +122,6 @@ let currentSettings = {
     playerBgColor: "#080808",
     playerBgOpacity: 75,
     playerLineGap: 4,
-    playerBetterTime: false,
     playerPosX: null,
     playerPosY: null
 };
@@ -114,7 +129,7 @@ let currentSettings = {
 window.ytProcessedSubtitles = [];
 
 function applyBetterTiming(events) {
-    if (!currentSettings.playerBetterTime || !events || events.length === 0) {
+    if (!events || events.length === 0) {
         window.ytProcessedSubtitles = events || [];
         return;
     }
@@ -188,15 +203,18 @@ chrome.storage.local.get(null, (data) => {
     if (data.playerBgColor) currentSettings.playerBgColor = data.playerBgColor;
     if (data.playerBgOpacity !== undefined) currentSettings.playerBgOpacity = data.playerBgOpacity;
     if (data.playerLineGap !== undefined) currentSettings.playerLineGap = data.playerLineGap;
-    if (data.playerBetterTime !== undefined) currentSettings.playerBetterTime = data.playerBetterTime;
     if (data.playerPosX !== undefined) currentSettings.playerPosX = data.playerPosX;
     if (data.playerPosY !== undefined) currentSettings.playerPosY = data.playerPosY;
+
+    sessionStorage.setItem('yt_ai_native_mode', currentSettings.playerActive ? 'false' : 'true');
 });
 
 // Ayar değişikliklerini anlık dinle
 chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "UPDATE_PLAYER_SETTINGS") {
         currentSettings = { ...currentSettings, ...message.settings };
+        sessionStorage.setItem('yt_ai_native_mode', currentSettings.playerActive ? 'false' : 'true');
+        
         updatePlayerStyles();
         // Zaman ayarı değişmişse listeyi tekrar hesapla
         if (window.ytTranslatedSubtitles) {

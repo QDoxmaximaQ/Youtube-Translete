@@ -9,12 +9,39 @@
     const processedUrls = new Set();
 
     // ---------------------------------------------------
+    // Sayfa bağlamında (Main World) komut dinleyici
+    // ---------------------------------------------------
+    window.addEventListener("message", (event) => {
+        if (event.source !== window) return;
+        if (event.data && event.data.type === "YT_RELOAD_CAPTIONS") {
+            const player = document.getElementById("movie_player");
+            if (player && typeof player.setOption === "function") {
+                const track = player.getOption("captions", "track");
+                if (track) {
+                    // Kısa süreliğine kapatıp açarak yeni JSON'u fetch etmesini zorla
+                    player.setOption("captions", "track", {});
+                    setTimeout(() => {
+                        player.setOption("captions", "track", track);
+                    }, 50);
+                }
+            }
+        }
+    });
+
+    // ---------------------------------------------------
     // Ham altyazı verisini content.js'e gönder
     // ---------------------------------------------------
     function sendToContentScript(rawText, url) {
-        const urlKey = url.split("?")[0];
+        let urlKey = url;
+        try {
+            const urlObj = new URL(url.startsWith("http") ? url : window.location.origin + url);
+            const v = urlObj.searchParams.get("v") || "";
+            const lang = urlObj.searchParams.get("lang") || "";
+            urlKey = v ? (v + "_" + lang) : url.split("?")[0];
+        } catch(e) {}
+
         if (processedUrls.has(urlKey)) {
-            console.log("[YT-Sub] Bu URL zaten işlendi, atlanıyor");
+            console.log("[YT-Sub] Bu video/dil zaten işlendi, atlanıyor:", urlKey);
             return;
         }
         processedUrls.add(urlKey);
@@ -52,6 +79,21 @@
                     sendToContentScript(text, originalUrl);
                 }).catch(e => console.error("[YT-Sub] Orijinal metin çekilemedi:", e));
 
+                // EĞER ÖZEL OYNATICI KAPALIYSA (YOUTUBE KENDİ ALTYAZISI KULLANILACAKSA)
+                const isNativeMode = sessionStorage.getItem('yt_ai_native_mode') === 'true';
+                if (isNativeMode) {
+                    const translation = sessionStorage.getItem('yt_ai_translation');
+                    // Çeviri varsa onu dön, yoksa boş/bekleme mesajı dön
+                    const mockResponse = translation || JSON.stringify({ 
+                        events: [{ tStartMs: 0, dDurationMs: 15000, segs: [{ utf8: "[AI Çevirisi Hazırlanıyor... Lütfen Bekleyin]" }] }] 
+                    });
+                    
+                    return new Response(mockResponse, {
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                }
+
             } catch (e) {
                 console.error("[YT-Sub] Fetch hook hatası:", e);
             }
@@ -84,6 +126,21 @@
                 originalFetch(originalUrl).then(res => res.text()).then(text => {
                     sendToContentScript(text, originalUrl);
                 }).catch(e => console.error("[YT-Sub] Orijinal metin XHR ile çekilemedi:", e));
+
+                // XHR İÇİN YOUTUBE KENDİ ALTYAZISINI EZME
+                const isNativeMode = sessionStorage.getItem('yt_ai_native_mode') === 'true';
+                if (isNativeMode) {
+                    this.addEventListener('readystatechange', () => {
+                        if (this.readyState === 4) {
+                            const translation = sessionStorage.getItem('yt_ai_translation');
+                            const mockResponse = translation || JSON.stringify({ 
+                                events: [{ tStartMs: 0, dDurationMs: 15000, segs: [{ utf8: "[AI Çevirisi Hazırlanıyor... Lütfen Bekleyin]" }] }] 
+                            });
+                            Object.defineProperty(this, 'responseText', { get: () => mockResponse });
+                            Object.defineProperty(this, 'response', { get: () => mockResponse });
+                        }
+                    });
+                }
 
             } catch (e) {
                 console.error("[YT-Sub] XHR hook hatası:", e);
